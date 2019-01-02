@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "discord-util.h"
+#include <assert.h>
 #include <http_client.h>
 #include <stdarg.h>
 #include <inttypes.h>
@@ -147,9 +148,30 @@ static gint cmp_chan_name(const channel_info *cinfo, const char *cname)
   return g_strcmp0(ciname, cname);
 }
 
+static gint cmp_chan_fname_id(const channel_info *cinfo, const char *cname)
+{
+  gchar *cgid = "";
+  assert(cname[0] == '#');
+  const gchar *gid = cname + 1, *gend = strchr(cname + 1, '.');
+  const gchar *cid = gend + 1;
+  assert(cid != NULL);
+
+  if (cinfo->type == CHANNEL_TEXT) {
+    cgid = cinfo->to.channel.sinfo->id;
+  } else if (cinfo->type == CHANNEL_GROUP_PRIVATE) {
+    cgid = "@me";
+  }
+
+  return strncmp(cgid, gid, gend-gid) || g_strcmp0(cinfo->id, cid);
+}
+
 static gint cmp_chan_fname(const channel_info *cinfo, const char *cname)
 {
   gchar *ciname = NULL;
+  if (g_str_has_prefix(cname, "#")) {
+    return cmp_chan_fname_id(cinfo, cname);
+  }
+
   if (cinfo->type == CHANNEL_TEXT) {
     ciname = cinfo->to.channel.bci->title;
   } else if (cinfo->type == CHANNEL_GROUP_PRIVATE) {
